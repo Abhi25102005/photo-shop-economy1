@@ -26,8 +26,8 @@ export function Dashboard({ onNavigateToUpload }: DashboardProps) {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setResources(data);
-      setFilteredResources(data);
+      setResources(data as Resource[]);
+      setFilteredResources(data as Resource[]);
     }
     setLoading(false);
   };

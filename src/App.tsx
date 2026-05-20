@@ -7,7 +7,7 @@ import { Upload } from './components/Upload';
 type View = 'dashboard' | 'upload';
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, isEmailUnconfirmed } = useAuth();
   const [currentView, setCurrentView] = useState<View>('dashboard');
 
   if (loading) {
@@ -21,7 +21,9 @@ function App() {
     );
   }
 
-  if (!user) {
+  const emailNotConfirmed = isEmailUnconfirmed || (user && !user.email_confirmed_at);
+
+  if (!user || emailNotConfirmed) {
     return <Auth />;
   }
 
