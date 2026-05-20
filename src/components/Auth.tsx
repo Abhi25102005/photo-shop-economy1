@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, UserPlus, Mail, Lock, Eye, EyeOff, ArrowLeft, MailCheck, RefreshCw } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, Eye, EyeOff, ArrowLeft, MailCheck, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 type AuthView = 'login' | 'signup' | 'confirmation-pending';
 
@@ -13,7 +13,9 @@ export function Auth() {
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
-  const { signIn, signUp, resendConfirmation, isEmailUnconfirmed } = useAuth();
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const { signIn, signUp, resendConfirmation, confirmEmail, isEmailUnconfirmed, pendingEmail } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +53,7 @@ export function Auth() {
     setError('');
 
     try {
-      const { error } = await resendConfirmation(email);
+      const { error } = await resendConfirmation(email || pendingEmail);
       if (error) {
         setError(error.message);
       } else {
@@ -64,71 +66,120 @@ export function Auth() {
     }
   };
 
+  const handleConfirm = async () => {
+    setConfirmLoading(true);
+    setConfirmSuccess(false);
+    setError('');
+
+    try {
+      const { error } = await confirmEmail();
+      if (error) {
+        setError(error);
+      } else {
+        setConfirmSuccess(true);
+      }
+    } catch {
+      setError('Failed to confirm email');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
   const switchView = (newView: AuthView) => {
     setView(newView);
     setError('');
     setResendSuccess(false);
+    setConfirmSuccess(false);
   };
+
+  const displayEmail = email || pendingEmail;
 
   if (view === 'confirmation-pending' || isEmailUnconfirmed) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/60 p-8">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl mb-4 shadow-lg shadow-orange-500/20">
-                <MailCheck className="w-7 h-7 text-white" />
+            {confirmSuccess ? (
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl mb-4 shadow-lg shadow-green-500/20">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                  Email confirmed
+                </h1>
+                <p className="text-gray-500 mt-2 text-sm">
+                  Your email has been verified. You are now signed in.
+                </p>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                Check your email
-              </h1>
-              <p className="text-gray-500 mt-2 text-sm leading-relaxed">
-                We sent a confirmation link to
-              </p>
-              <p className="text-gray-900 font-medium text-sm mt-1">
-                {email}
-              </p>
-            </div>
+            ) : (
+              <>
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl mb-4 shadow-lg shadow-orange-500/20">
+                    <MailCheck className="w-7 h-7 text-white" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                    Confirm your email
+                  </h1>
+                  <p className="text-gray-500 mt-2 text-sm leading-relaxed">
+                    A confirmation email was sent to
+                  </p>
+                  <p className="text-gray-900 font-medium text-sm mt-1">
+                    {displayEmail}
+                  </p>
+                </div>
 
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
-              <p className="text-blue-700 text-sm leading-relaxed">
-                Click the link in the email to verify your account. The link expires after 24 hours.
-              </p>
-            </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+                  <p className="text-blue-700 text-sm leading-relaxed">
+                    Click the confirmation link in your email, or use the button below to confirm your email directly.
+                  </p>
+                </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-2.5 rounded-lg text-sm mb-4">
-                {error}
-              </div>
+                {error && (
+                  <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-2.5 rounded-lg text-sm mb-4">
+                    {error}
+                  </div>
+                )}
+
+                {resendSuccess && (
+                  <div className="bg-green-50 border border-green-100 text-green-600 px-4 py-2.5 rounded-lg text-sm mb-4">
+                    Confirmation email resent! Check your inbox.
+                  </div>
+                )}
+
+                <button
+                  onClick={handleConfirm}
+                  disabled={confirmLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white py-2.5 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-600 active:from-blue-800 active:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-500/20 mb-3"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {confirmLoading ? 'Confirming...' : 'Confirm my email'}
+                </button>
+
+                <button
+                  onClick={handleResend}
+                  disabled={resendLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mb-3"
+                >
+                  <RefreshCw className={`w-4 h-4 ${resendLoading ? 'animate-spin' : ''}`} />
+                  {resendLoading ? 'Sending...' : 'Resend confirmation email'}
+                </button>
+
+                <button
+                  onClick={() => switchView('login')}
+                  className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700 py-2 text-sm font-medium transition"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to sign in
+                </button>
+              </>
             )}
-
-            {resendSuccess && (
-              <div className="bg-green-50 border border-green-100 text-green-600 px-4 py-2.5 rounded-lg text-sm mb-4">
-                Confirmation email sent! Check your inbox.
-              </div>
-            )}
-
-            <button
-              onClick={handleResend}
-              disabled={resendLoading}
-              className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mb-3"
-            >
-              <RefreshCw className={`w-4 h-4 ${resendLoading ? 'animate-spin' : ''}`} />
-              {resendLoading ? 'Sending...' : 'Resend confirmation email'}
-            </button>
-
-            <button
-              onClick={() => switchView('login')}
-              className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700 py-2 text-sm font-medium transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to sign in
-            </button>
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-6">
-            Did not receive the email? Check your spam folder.
-          </p>
+          {!confirmSuccess && (
+            <p className="text-center text-xs text-gray-400 mt-6">
+              Did not receive the email? Check your spam folder or try resending.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -235,7 +286,7 @@ export function Auth() {
           {isSignup && (
             <div className="mt-4 bg-amber-50 border border-amber-100 rounded-lg p-3">
               <p className="text-amber-700 text-xs leading-relaxed">
-                A confirmation email will be sent to verify your account. You must confirm your email before signing in.
+                A confirmation email will be sent to verify your account. You can also confirm directly from the next screen.
               </p>
             </div>
           )}
